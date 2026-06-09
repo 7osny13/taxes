@@ -684,3 +684,115 @@ tbody tr:hover {
         page-break-after: auto;
     }
 }
+
+/* ============================
+   لوحة متابعة الشركات
+   ============================ */
+.company-dashboard {
+    background: #f8f9fa;
+    border-radius: 12px;
+    padding: 15px 20px;
+    margin-bottom: 20px;
+    border: 1px solid #e0e0e0;
+}
+
+.dashboard-filters {
+    display: flex;
+    gap: 10px;
+    flex-wrap: wrap;
+}
+
+.dash-filter-btn {
+    padding: 8px 18px;
+    border: 2px solid #e0e0e0;
+    border-radius: 20px;
+    background: white;
+    font-size: 0.9rem;
+    cursor: pointer;
+    transition: all 0.2s;
+    font-weight: 600;
+}
+
+.dash-filter-btn:hover { transform: translateY(-1px); }
+
+.dash-filter-btn.active {
+    background: linear-gradient(135deg, #667eea, #764ba2);
+    color: white;
+    border-color: transparent;
+}
+
+.dash-filter-btn.pending.active { background: #ffa801; border-color: transparent; color: white; }
+.dash-filter-btn.overdue.active { background: #ff4757; border-color: transparent; color: white; }
+.dash-filter-btn.clean.active  { background: #2ed573; border-color: transparent; color: white; }
+
+/* ============================
+   صف الشركة ملون حسب الحالة
+   ============================ */
+tr.row-overdue { background: #fff5f5 !important; }
+tr.row-pending { background: #fffbf0 !important; }
+tr.row-clean   { background: #f0fff4 !important; }
+
+tr.row-overdue:hover { background: #ffe8e8 !important; }
+tr.row-pending:hover { background: #fff3d0 !important; }
+tr.row-clean:hover   { background: #d8f5e3 !important; }
+
+/* ============================
+   Modal تقرير الشركة
+   ============================ */
+.company-report-header {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(140px, 1fr));
+    gap: 12px;
+    margin-bottom: 25px;
+}
+
+.cr-stat {
+    background: linear-gradient(135deg, #667eea, #764ba2);
+    color: white;
+    padding: 15px;
+    border-radius: 10px;
+    text-align: center;
+}
+.cr-stat.green  { background: linear-gradient(135deg, #2ed573, #26bf67); }
+.cr-stat.yellow { background: linear-gradient(135deg, #ffa801, #e69500); }
+.cr-stat.red    { background: linear-gradient(135deg, #ff4757, #e84049); }
+
+.cr-stat-label { display: block; font-size: 0.8rem; opacity: 0.9; margin-bottom: 4px; }
+.cr-stat-value { display: block; font-size: 1.6rem; font-weight: bold; }
+
+.cr-section { margin-bottom: 25px; }
+.cr-section h4 {
+    font-size: 1rem;
+    color: #667eea;
+    border-bottom: 2px solid #e0e0e0;
+    padding-bottom: 8px;
+    margin-bottom: 12px;
+}
+
+.cr-print-btn {
+    display: block;
+    margin: 20px auto 0;
+    padding: 12px 30px;
+    background: linear-gradient(135deg, #667eea, #764ba2);
+    color: white;
+    border: none;
+    border-radius: 8px;
+    font-size: 1rem;
+    cursor: pointer;
+    font-weight: 600;
+}
+.cr-print-btn:hover { opacity: 0.9; }
+
+/* ============================
+   بادج العدد على زر التقرير
+   ============================ */
+.pending-badge {
+    display: inline-block;
+    background: #ff4757;
+    color: white;
+    border-radius: 10px;
+    padding: 1px 7px;
+    font-size: 0.75rem;
+    margin-right: 4px;
+    vertical-align: middle;
+}
