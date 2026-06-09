@@ -5,58 +5,16 @@ let currentReceipts = [];
 let editingInvoiceId = null;
 let editingCompanyId = null;
 
-// Safe DOM helpers
-function safeGetElement(id) {
-    const element = document.getElementById(id);
-    if (!element) {
-        console.warn(`Element with id '${id}' not found`);
-    }
-    return element;
-}
-
-function showLoading() {
-    const spinner = safeGetElement('loadingSpinner');
-    if (spinner) spinner.classList.add('active');
-}
-
-function hideLoading() {
-    const spinner = safeGetElement('loadingSpinner');
-    if (spinner) spinner.classList.remove('active');
-}
-
-// Initialize data when Supabase is ready
-window.initializeData = async function() {
-    try {
-        if (!supabase) {
-            console.error('Supabase client not initialized');
-            showNotification('فشل الاتصال بقاعدة البيانات', 'error');
-            return;
-        }
-        
-        console.log('Loading data...');
-        showLoading();
-        
-        await loadCompanies();
-        await loadInvoices();
-        await loadReceipts();
-        updateDashboardStats();
-        checkAlerts();
-        
-        hideLoading();
-        console.log('✅ Data loaded successfully');
-    } catch (error) {
-        console.error('Error loading data:', error);
-        hideLoading();
-        showNotification('خطأ في تحميل البيانات: ' + error.message, 'error');
-    }
-};
-
-// Start initialization when DOM is ready
-if (document.readyState === 'loading') {
-    document.addEventListener('DOMContentLoaded', initializeApp);
-} else {
-    initializeApp();
-}
+// Load data on page load
+window.addEventListener('load', async () => {
+    showLoading();
+    await loadCompanies();
+    await loadInvoices();
+    await loadReceipts();
+    updateDashboardStats();
+    checkAlerts();
+    hideLoading();
+});
 
 // =========================
 // DATA LOADING FUNCTIONS
@@ -160,34 +118,82 @@ function displayInvoices() {
 
 function displayCompanies() {
     const tbody = document.getElementById('companiesTableBody');
-    
+
     if (currentCompanies.length === 0) {
-        tbody.innerHTML = '<tr><td colspan="7" class="no-data">لا توجد شركات مسجلة</td></tr>';
+        tbody.innerHTML = '<tr><td colspan="10" class="no-data">لا توجد شركات مسجلة</td></tr>';
         return;
     }
 
-    tbody.innerHTML = currentCompanies.map(company => {
-        const companyInvoices = currentInvoices.filter(inv => inv.company_id === company.id);
-        const pendingInvoices = companyInvoices.filter(inv => 
-            getInvoiceStatus(inv) === STATUS.PENDING || getInvoiceStatus(inv) === STATUS.OVERDUE
-        );
-        
+    // حساب إحصائيات كل شركة
+    const rows = currentCompanies.map(company => {
+        const companyInvoices  = currentInvoices.filter(inv => inv.company_id === company.id);
+        const receivedInvoices = companyInvoices.filter(inv => getInvoiceStatus(inv) === STATUS.RECEIVED);
+        const pendingInvoices  = companyInvoices.filter(inv => getInvoiceStatus(inv) === STATUS.PENDING);
+        const overdueInvoices  = companyInvoices.filter(inv => getInvoiceStatus(inv) === STATUS.OVERDUE);
+
+        const totalTax   = companyInvoices.reduce((s, i) => s + i.tax_amount, 0);
+        const pendingTax = [...pendingInvoices, ...overdueInvoices].reduce((s, i) => s + i.tax_amount, 0);
+
+        return {
+            company,
+            total:    companyInvoices.length,
+            received: receivedInvoices.length,
+            pending:  pendingInvoices.length,
+            overdue:  overdueInvoices.length,
+            totalTax,
+            pendingTax
+        };
+    });
+
+    // فلتر حسب لوحة المتابعة
+    const filter = typeof companyDashboardFilter !== 'undefined' ? companyDashboardFilter : 'all';
+    const filtered = rows.filter(r => {
+        if (filter === 'pending')  return r.pending > 0 || r.overdue > 0;
+        if (filter === 'overdue')  return r.overdue > 0;
+        if (filter === 'clean')    return r.pending === 0 && r.overdue === 0 && r.total > 0;
+        return true;
+    });
+
+    if (filtered.length === 0) {
+        tbody.innerHTML = '<tr><td colspan="10" class="no-data">لا توجد نتائج</td></tr>';
+        return;
+    }
+
+    // ترتيب: متأخرة أولاً، ثم معلقة، ثم منتهية
+    filtered.sort((a, b) => {
+        const scoreA = a.overdue * 2 + a.pending;
+        const scoreB = b.overdue * 2 + b.pending;
+        return scoreB - scoreA;
+    });
+
+    tbody.innerHTML = filtered.map(({ company, total, received, pending, overdue, totalTax, pendingTax }) => {
+        // لون الصف
+        const rowClass = overdue > 0 ? 'row-overdue' : pending > 0 ? 'row-pending' : 'row-clean';
+
+        // بادج العدد المعلق
+        const pendingBadge = (pending + overdue) > 0
+            ? `<span class="pending-badge">${pending + overdue}</span>`
+            : '';
+
         return `
-            <tr>
-                <td>${company.name}</td>
+            <tr class="${rowClass}">
+                <td><strong>${company.name}</strong></td>
                 <td>${company.tax_id || '-'}</td>
                 <td>${company.phone || '-'}</td>
-                <td>${company.email || '-'}</td>
-                <td>${companyInvoices.length}</td>
-                <td><span class="status-badge status-${pendingInvoices.length > 0 ? 'pending' : 'received'}">${pendingInvoices.length}</span></td>
+                <td style="text-align:center">${total}</td>
+                <td style="text-align:center;color:#2ed573;font-weight:bold">${received}</td>
+                <td style="text-align:center;color:#ffa801;font-weight:bold">${pending}</td>
+                <td style="text-align:center;color:#ff4757;font-weight:bold">${overdue}</td>
+                <td>${formatCurrency(totalTax)}</td>
+                <td style="font-weight:bold;color:${pendingTax > 0 ? '#ff4757' : '#2ed573'}">${formatCurrency(pendingTax)}</td>
                 <td>
                     <div class="action-buttons">
+                        <button class="btn-primary" style="padding:6px 10px;font-size:0.85rem" onclick="openCompanyReport(${company.id})">${pendingBadge}📋 تقرير</button>
                         <button class="btn-info" onclick="editCompany(${company.id})">تعديل</button>
                         <button class="btn-danger" onclick="deleteCompany(${company.id})">حذف</button>
                     </div>
                 </td>
-            </tr>
-        `;
+            </tr>`;
     }).join('');
 }
 
@@ -584,45 +590,19 @@ function filterInvoices() {
 function filterCompanies() {
     const searchTerm = document.getElementById('searchCompany').value.toLowerCase();
 
-    let filtered = currentCompanies;
-
     if (searchTerm) {
-        filtered = filtered.filter(comp => 
+        // فلتر مؤقت بناءً على البحث فقط
+        const saved = currentCompanies;
+        const tempCompanies = currentCompanies.filter(comp =>
             comp.name.toLowerCase().includes(searchTerm) ||
             (comp.tax_id || '').toLowerCase().includes(searchTerm)
         );
+        currentCompanies = tempCompanies;
+        displayCompanies();
+        currentCompanies = saved;
+    } else {
+        displayCompanies();
     }
-
-    // Update display
-    const tbody = document.getElementById('companiesTableBody');
-    if (filtered.length === 0) {
-        tbody.innerHTML = '<tr><td colspan="7" class="no-data">لا توجد نتائج</td></tr>';
-        return;
-    }
-
-    tbody.innerHTML = filtered.map(company => {
-        const companyInvoices = currentInvoices.filter(inv => inv.company_id === company.id);
-        const pendingInvoices = companyInvoices.filter(inv => 
-            getInvoiceStatus(inv) === STATUS.PENDING || getInvoiceStatus(inv) === STATUS.OVERDUE
-        );
-        
-        return `
-            <tr>
-                <td>${company.name}</td>
-                <td>${company.tax_id || '-'}</td>
-                <td>${company.phone || '-'}</td>
-                <td>${company.email || '-'}</td>
-                <td>${companyInvoices.length}</td>
-                <td><span class="status-badge status-${pendingInvoices.length > 0 ? 'pending' : 'received'}">${pendingInvoices.length}</span></td>
-                <td>
-                    <div class="action-buttons">
-                        <button class="btn-info" onclick="editCompany(${company.id})">تعديل</button>
-                        <button class="btn-danger" onclick="deleteCompany(${company.id})">حذف</button>
-                    </div>
-                </td>
-            </tr>
-        `;
-    }).join('');
 }
 
 // =========================
@@ -776,6 +756,14 @@ function fileToBase64(file) {
         reader.onload = () => resolve(reader.result);
         reader.onerror = error => reject(error);
     });
+}
+
+function showLoading() {
+    document.getElementById('loadingSpinner').classList.add('active');
+}
+
+function hideLoading() {
+    document.getElementById('loadingSpinner').classList.remove('active');
 }
 
 function showNotification(message, type) {
