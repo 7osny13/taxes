@@ -5,16 +5,32 @@ let currentReceipts = [];
 let editingInvoiceId = null;
 let editingCompanyId = null;
 
-// Load data on page load
-window.addEventListener('load', async () => {
-    showLoading();
-    await loadCompanies();
-    await loadInvoices();
-    await loadReceipts();
-    updateDashboardStats();
-    checkAlerts();
-    hideLoading();
-});
+// Safe DOM helpers
+function showLoading() {
+    const s = document.getElementById('loadingSpinner');
+    if (s) s.classList.add('active');
+}
+function hideLoading() {
+    const s = document.getElementById('loadingSpinner');
+    if (s) s.classList.remove('active');
+}
+
+// هذه الدالة بيستدعيها config.js بعد ما Supabase يكون جاهز
+window.initializeData = async function() {
+    try {
+        showLoading();
+        await loadCompanies();
+        await loadInvoices();
+        await loadReceipts();
+        updateDashboardStats();
+        checkAlerts();
+        hideLoading();
+        console.log('✅ Data loaded successfully');
+    } catch (error) {
+        console.error('Error loading data:', error);
+        hideLoading();
+    }
+};
 
 // =========================
 // DATA LOADING FUNCTIONS
@@ -756,14 +772,6 @@ function fileToBase64(file) {
         reader.onload = () => resolve(reader.result);
         reader.onerror = error => reject(error);
     });
-}
-
-function showLoading() {
-    document.getElementById('loadingSpinner').classList.add('active');
-}
-
-function hideLoading() {
-    document.getElementById('loadingSpinner').classList.remove('active');
 }
 
 function showNotification(message, type) {
