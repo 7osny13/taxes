@@ -104,9 +104,19 @@
                 <button class="btn btn-primary" onclick="openCompanyModal()">+ شركة جديدة</button>
             </div>
 
+            <!-- لوحة المتابعة السريعة -->
+            <div class="company-dashboard" id="companyDashboard">
+                <div class="dashboard-filters">
+                    <button class="dash-filter-btn active" onclick="filterCompanyDashboard('all', this)">الكل</button>
+                    <button class="dash-filter-btn pending" onclick="filterCompanyDashboard('pending', this)">⏳ عندها معلقة</button>
+                    <button class="dash-filter-btn overdue" onclick="filterCompanyDashboard('overdue', this)">⚠️ عندها متأخرة</button>
+                    <button class="dash-filter-btn clean" onclick="filterCompanyDashboard('clean', this)">✅ منتهية</button>
+                </div>
+            </div>
+
             <!-- Companies Search -->
             <div class="filters">
-                <input type="text" id="searchCompany" placeholder="بحث باسم الشركة أو رقم التسجيل الضريبي" oninput="filterCompanies()">
+                <input type="text" id="searchCompany" placeholder="🔍 بحث باسم الشركة أو رقم التسجيل الضريبي" oninput="filterCompanies()">
             </div>
 
             <!-- Companies Table -->
@@ -115,17 +125,20 @@
                     <thead>
                         <tr>
                             <th>اسم الشركة</th>
-                            <th>رقم التسجيل الضريبي</th>
-                            <th>رقم الهاتف</th>
-                            <th>البريد الإلكتروني</th>
-                            <th>عدد الفواتير</th>
-                            <th>المعلقة</th>
+                            <th>رقم الضريبي</th>
+                            <th>هاتف</th>
+                            <th>الفواتير</th>
+                            <th>✅ مستلمة</th>
+                            <th>⏳ معلقة</th>
+                            <th>⚠️ متأخرة</th>
+                            <th>إجمالي 1%</th>
+                            <th>1% معلقة</th>
                             <th>إجراءات</th>
                         </tr>
                     </thead>
                     <tbody id="companiesTableBody">
                         <tr>
-                            <td colspan="7" class="no-data">لا توجد شركات مسجلة</td>
+                            <td colspan="10" class="no-data">لا توجد شركات مسجلة</td>
                         </tr>
                     </tbody>
                 </table>
@@ -314,6 +327,19 @@
                         <button type="submit" class="btn btn-primary">حفظ الإيصال</button>
                     </div>
                 </form>
+            </div>
+        </div>
+    </div>
+
+    <!-- Company Report Modal -->
+    <div id="companyReportModal" class="modal">
+        <div class="modal-content" style="max-width: 900px;">
+            <div class="modal-header">
+                <h3 id="companyReportTitle">تقرير الشركة</h3>
+                <button class="close-btn" onclick="closeCompanyReportModal()">&times;</button>
+            </div>
+            <div class="modal-body" id="companyReportBody">
+                <!-- Content inserted by JS -->
             </div>
         </div>
     </div>
