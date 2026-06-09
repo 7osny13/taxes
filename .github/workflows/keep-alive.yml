@@ -1,0 +1,18 @@
+name: Keep Supabase Alive
+
+on:
+  schedule:
+    - cron: '0 */6 * * *'
+  workflow_dispatch:
+
+jobs:
+  ping:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Ping Supabase
+        run: |
+          curl -X GET \
+            "https://foxvwykyoraznbadozba.supabase.co/rest/v1/companies?select=count" \
+            -H "apikey: eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImZveHZ3eWt5b3Jhem5iYWRvemJhIiwicm9sZSI6ImFub24iLCJpYXQiOjE3Njk3NzI3NzgsImV4cCI6MjA4NTM0ODc3OH0.jDAnMiRI7HQ6AMTOASLQptlKjrD8xxjQjUQm-4tcUWE" \
+            -H "Authorization: Bearer eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImZveHZ3eWt5b3Jhem5iYWRvemJhIiwicm9sZSI6ImFub24iLCJpYXQiOjE3Njk3NzI3NzgsImV4cCI6MjA4NTM0ODc3OH0.jDAnMiRI7HQ6AMTOASLQptlKjrD8xxjQjUQm-4tcUWE"
+          echo "✅ Ping done"
