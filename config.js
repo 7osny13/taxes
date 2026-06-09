@@ -118,3 +118,26 @@ const STATUS = {
 
 // Initialize app on page load
 document.addEventListener('DOMContentLoaded', initializeApp);
+
+// =====================================================
+// Keep-Alive: منع Supabase من الإيقاف التلقائي
+// =====================================================
+
+// دالة لإبقاء قاعدة البيانات نشطة
+async function keepSupabaseAlive() {
+    if (!supabase) return;
+    
+    try {
+        // استعلام بسيط جداً لإبقاء الاتصال نشط
+        await supabase.from('companies').select('count', { count: 'exact', head: true });
+        console.log('✅ Keep-alive ping sent');
+    } catch (error) {
+        console.warn('Keep-alive ping failed:', error.message);
+    }
+}
+
+// تشغيل Keep-Alive كل 5 دقائق (300000 ms)
+setInterval(keepSupabaseAlive, 300000);
+
+// تشغيل أول مرة بعد دقيقة من فتح الصفحة
+setTimeout(keepSupabaseAlive, 60000);
