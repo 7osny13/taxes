@@ -52,12 +52,6 @@ async function initializeApp() {
             supabase = window.supabase.createClient(SUPABASE_URL, SUPABASE_ANON_KEY);
             console.log('✅ Supabase client created successfully');
             
-            // Test connection
-            const { data, error } = await supabase.from('companies').select('count');
-            if (error && error.code !== 'PGRST116') {
-                console.warn('Database connection issue:', error.message);
-            }
-            
             // Initialize data
             if (typeof window.initializeData === 'function') {
                 await window.initializeData();
