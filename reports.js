@@ -478,3 +478,191 @@ function exportToCSV() {
 
     showNotification('تم تصدير التقرير بنجاح', 'success');
 }
+
+// ==============================================
+// التحسين 1: تقرير الشركة المنفصل
+// ==============================================
+
+function openCompanyReport(companyId) {
+    const company = currentCompanies.find(c => c.id === companyId);
+    if (!company) return;
+
+    // فلتر كل فواتير الشركة
+    const invoices = currentInvoices.filter(inv => inv.company_id === companyId);
+
+    if (invoices.length === 0) {
+        showNotification('لا توجد فواتير لهذه الشركة', 'error');
+        return;
+    }
+
+    const stats = calculateMonthlyStats(invoices);
+
+    // ترتيب: متأخرة أولاً، ثم معلقة، ثم مستلمة
+    const overdueInvoices  = invoices.filter(inv => getInvoiceStatus(inv) === STATUS.OVERDUE);
+    const pendingInvoices  = invoices.filter(inv => getInvoiceStatus(inv) === STATUS.PENDING);
+    const receivedInvoices = invoices.filter(inv => getInvoiceStatus(inv) === STATUS.RECEIVED);
+
+    document.getElementById('companyReportTitle').textContent = `📋 تقرير: ${company.name}`;
+
+    let html = `
+        <!-- إحصائيات ملخصة -->
+        <div class="company-report-header">
+            <div class="cr-stat">
+                <span class="cr-stat-label">إجمالي الفواتير</span>
+                <span class="cr-stat-value">${stats.total}</span>
+            </div>
+            <div class="cr-stat green">
+                <span class="cr-stat-label">✅ مستلمة</span>
+                <span class="cr-stat-value">${stats.received}</span>
+            </div>
+            <div class="cr-stat yellow">
+                <span class="cr-stat-label">⏳ معلقة</span>
+                <span class="cr-stat-value">${stats.pending}</span>
+            </div>
+            <div class="cr-stat red">
+                <span class="cr-stat-label">⚠️ متأخرة</span>
+                <span class="cr-stat-value">${stats.overdue}</span>
+            </div>
+            <div class="cr-stat">
+                <span class="cr-stat-label">إجمالي 1%</span>
+                <span class="cr-stat-value">${formatCurrency(stats.totalTax)}</span>
+            </div>
+            <div class="cr-stat red">
+                <span class="cr-stat-label">1% معلقة</span>
+                <span class="cr-stat-value">${formatCurrency(stats.pendingTax)}</span>
+            </div>
+        </div>
+    `;
+
+    // فواتير متأخرة
+    if (overdueInvoices.length > 0) {
+        html += `
+            <div class="cr-section">
+                <h4>⚠️ فواتير متأخرة (${overdueInvoices.length})</h4>
+                ${buildCompanyInvoiceTable(overdueInvoices)}
+            </div>`;
+    }
+
+    // فواتير معلقة
+    if (pendingInvoices.length > 0) {
+        html += `
+            <div class="cr-section">
+                <h4>⏳ فواتير معلقة (${pendingInvoices.length})</h4>
+                ${buildCompanyInvoiceTable(pendingInvoices)}
+            </div>`;
+    }
+
+    // فواتير مستلمة
+    if (receivedInvoices.length > 0) {
+        html += `
+            <div class="cr-section">
+                <h4>✅ فواتير مستلمة (${receivedInvoices.length})</h4>
+                ${buildCompanyInvoiceTable(receivedInvoices)}
+            </div>`;
+    }
+
+    html += `<button class="cr-print-btn" onclick="printCompanyReport('${company.name}')">🖨️ طباعة تقرير ${company.name}</button>`;
+
+    document.getElementById('companyReportBody').innerHTML = html;
+    document.getElementById('companyReportModal').classList.add('active');
+}
+
+function buildCompanyInvoiceTable(invoices) {
+    const rows = invoices.map(inv => {
+        const status  = getInvoiceStatus(inv);
+        const days    = getDaysRemaining(inv.date);
+        const daysStr = status === STATUS.RECEIVED
+            ? '✅'
+            : (days <= 0 ? `<span style="color:#ff4757">متأخر ${Math.abs(days)} يوم</span>`
+                         : `<span style="color:${days <= 10 ? '#ff4757' : days <= 30 ? '#ffa801' : '#2ed573'}">${days} يوم</span>`);
+        return `
+            <tr>
+                <td>${inv.number}</td>
+                <td>${formatDate(inv.date)}</td>
+                <td>${formatCurrency(inv.amount)}</td>
+                <td><strong>${formatCurrency(inv.tax_amount)}</strong></td>
+                <td>${daysStr}</td>
+                <td><span class="status-badge status-${status}">${getStatusText(status)}</span></td>
+            </tr>`;
+    }).join('');
+
+    const totalAmount = invoices.reduce((s, i) => s + i.amount, 0);
+    const totalTax    = invoices.reduce((s, i) => s + i.tax_amount, 0);
+
+    return `
+        <table style="width:100%;margin-top:10px">
+            <thead>
+                <tr>
+                    <th>رقم الفاتورة</th>
+                    <th>التاريخ</th>
+                    <th>المبلغ</th>
+                    <th>قيمة 1%</th>
+                    <th>الأيام</th>
+                    <th>الحالة</th>
+                </tr>
+            </thead>
+            <tbody>
+                ${rows}
+                <tr style="font-weight:bold;background:#f0f0f0">
+                    <td colspan="2">الإجمالي</td>
+                    <td>${formatCurrency(totalAmount)}</td>
+                    <td><strong>${formatCurrency(totalTax)}</strong></td>
+                    <td colspan="2"></td>
+                </tr>
+            </tbody>
+        </table>`;
+}
+
+function closeCompanyReportModal() {
+    document.getElementById('companyReportModal').classList.remove('active');
+}
+
+function printCompanyReport(companyName) {
+    const body    = document.getElementById('companyReportBody').innerHTML;
+    const win     = window.open('', '_blank');
+    win.document.write(`
+        <html dir="rtl"><head>
+        <meta charset="UTF-8">
+        <title>تقرير ${companyName}</title>
+        <style>
+            body { font-family: 'Segoe UI', sans-serif; direction: rtl; padding: 20px; }
+            h2   { color: #667eea; border-bottom: 2px solid #667eea; padding-bottom: 8px; }
+            h4   { color: #333; margin-top: 20px; }
+            table { width: 100%; border-collapse: collapse; margin-top: 10px; }
+            th { background: #667eea; color: white; padding: 10px; text-align: right; }
+            td { padding: 8px 10px; border-bottom: 1px solid #eee; }
+            .company-report-header { display: flex; gap: 10px; flex-wrap: wrap; margin-bottom: 20px; }
+            .cr-stat { background: #667eea; color: white; padding: 12px; border-radius: 8px; text-align: center; min-width: 100px; }
+            .cr-stat.green  { background: #2ed573; }
+            .cr-stat.yellow { background: #ffa801; }
+            .cr-stat.red    { background: #ff4757; }
+            .cr-stat-label  { display: block; font-size: 0.75rem; }
+            .cr-stat-value  { display: block; font-size: 1.4rem; font-weight: bold; }
+            .status-badge   { padding: 3px 8px; border-radius: 10px; font-size: 0.8rem; }
+            .cr-print-btn, button { display: none; }
+        </style>
+        </head><body>
+        <h2>📋 تقرير: ${companyName}</h2>
+        <p>تاريخ الطباعة: ${new Date().toLocaleDateString('ar-EG')}</p>
+        ${body}
+        </body></html>`);
+    win.document.close();
+    win.focus();
+    setTimeout(() => { win.print(); win.close(); }, 500);
+}
+
+// ==============================================
+// التحسين 3: لوحة متابعة الشركات المُحسَّنة
+// ==============================================
+
+let companyDashboardFilter = 'all';
+
+function filterCompanyDashboard(filter, btn) {
+    companyDashboardFilter = filter;
+
+    // تحديث أزرار الفلتر
+    document.querySelectorAll('.dash-filter-btn').forEach(b => b.classList.remove('active'));
+    btn.classList.add('active');
+
+    displayCompanies();
+}
