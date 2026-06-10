@@ -483,7 +483,10 @@ function exportToCSV() {
 // التحسين 1: تقرير الشركة المنفصل
 // ==============================================
 
+let _printCompanyId = null;
+
 function openCompanyReport(companyId) {
+    _printCompanyId = companyId;
     const company = currentCompanies.find(c => c.id === companyId);
     if (!company) return;
 
@@ -628,195 +631,106 @@ document.addEventListener('click', function(e) {
 });
 
 function printCompanyReport(companyName) {
-    const reportBody = document.getElementById('companyReportBody');
-    const clone = reportBody.cloneNode(true);
-    const printBtn = clone.querySelector('.cr-print-btn');
-    if (printBtn) printBtn.remove();
-    const printContent = clone.innerHTML;
-
-    const today = new Date().toLocaleDateString('ar-EG', {
+    const invoices     = currentInvoices.filter(inv => inv.company_id === _printCompanyId);
+    const overdue      = invoices.filter(inv => getInvoiceStatus(inv) === STATUS.OVERDUE);
+    const pending      = invoices.filter(inv => getInvoiceStatus(inv) === STATUS.PENDING);
+    const received     = invoices.filter(inv => getInvoiceStatus(inv) === STATUS.RECEIVED);
+    const stats        = calculateMonthlyStats(invoices);
+    const today        = new Date().toLocaleDateString('ar-EG', {
         weekday: 'long', year: 'numeric', month: 'long', day: 'numeric'
     });
 
-    const html = `<!DOCTYPE html>
-<html dir="rtl" lang="ar">
-<head>
-<meta charset="UTF-8">
-<title>تقرير ${companyName}</title>
-<style>
-  @page { size: A4; margin: 15mm 12mm; }
-  * { box-sizing: border-box; margin: 0; padding: 0; }
-  body {
-    font-family: 'Segoe UI', Tahoma, Arial, sans-serif;
-    direction: rtl;
-    color: #222;
-    font-size: 11pt;
-    background: white;
-  }
-
-  /* رأس الصفحة */
-  .print-header {
-    display: flex;
-    justify-content: space-between;
-    align-items: flex-end;
-    border-bottom: 3px solid #667eea;
-    padding-bottom: 10px;
-    margin-bottom: 15px;
-  }
-  .print-header-right h1 {
-    font-size: 16pt;
-    color: #667eea;
-    margin-bottom: 3px;
-  }
-  .print-header-right p {
-    font-size: 9pt;
-    color: #666;
-  }
-  .print-header-left {
-    text-align: left;
-    font-size: 9pt;
-    color: #666;
-  }
-
-  /* بطاقات الإحصائيات */
-  .company-report-header {
-    display: flex;
-    gap: 8px;
-    margin-bottom: 18px;
-    flex-wrap: wrap;
-  }
-  .cr-stat {
-    flex: 1;
-    min-width: 90px;
-    background: #667eea;
-    color: white;
-    padding: 10px 8px;
-    border-radius: 8px;
-    text-align: center;
-    -webkit-print-color-adjust: exact;
-    print-color-adjust: exact;
-  }
-  .cr-stat.green  { background: #2ed573; }
-  .cr-stat.yellow { background: #ffa801; }
-  .cr-stat.red    { background: #ff4757; }
-  .cr-stat-label  { display: block; font-size: 8pt; margin-bottom: 3px; opacity: 0.95; }
-  .cr-stat-value  { display: block; font-size: 14pt; font-weight: bold; }
-
-  /* أقسام الفواتير */
-  .cr-section { margin-bottom: 20px; page-break-inside: avoid; }
-  .cr-section h4 {
-    font-size: 11pt;
-    font-weight: bold;
-    padding: 6px 10px;
-    border-radius: 5px 5px 0 0;
-    margin-bottom: 0;
-    background: #f0f0f0;
-    border-right: 4px solid #667eea;
-    color: #333;
-    -webkit-print-color-adjust: exact;
-    print-color-adjust: exact;
-  }
-
-  /* جداول الفواتير */
-  table {
-    width: 100%;
-    border-collapse: collapse;
-    font-size: 9.5pt;
-  }
-  thead tr {
-    background: #667eea;
-    color: white;
-    -webkit-print-color-adjust: exact;
-    print-color-adjust: exact;
-  }
-  th {
-    padding: 7px 8px;
-    text-align: right;
-    font-weight: 600;
-  }
-  td {
-    padding: 6px 8px;
-    border-bottom: 1px solid #eee;
-  }
-  tbody tr:nth-child(even) {
-    background: #f9f9f9;
-    -webkit-print-color-adjust: exact;
-    print-color-adjust: exact;
-  }
-  tbody tr:last-child td {
-    font-weight: bold;
-    background: #efefef;
-    border-top: 2px solid #ccc;
-    -webkit-print-color-adjust: exact;
-    print-color-adjust: exact;
-  }
-
-  /* بادجات الحالة */
-  .status-badge {
-    padding: 2px 7px;
-    border-radius: 8px;
-    font-size: 8.5pt;
-    font-weight: 600;
-    -webkit-print-color-adjust: exact;
-    print-color-adjust: exact;
-  }
-  .status-received { background: #d4edda; color: #155724; }
-  .status-pending  { background: #fff3cd; color: #856404; }
-  .status-overdue  { background: #f8d7da; color: #721c24; }
-
-  /* تذييل الصفحة */
-  .print-footer {
-    margin-top: 20px;
-    border-top: 1px solid #ddd;
-    padding-top: 8px;
-    font-size: 8.5pt;
-    color: #888;
-    display: flex;
-    justify-content: space-between;
-  }
-
-  /* إخفاء زر الطباعة */
-  .cr-print-btn, button { display: none !important; }
-</style>
-</head>
-<body>
-  <div class="print-header">
-    <div class="print-header-right">
-      <h1>📋 تقرير الشركة: ${companyName}</h1>
-      <p>نظام متابعة إيصالات الـ 1% الضريبية</p>
-    </div>
-    <div class="print-header-left">
-      <div>تاريخ الطباعة</div>
-      <div><strong>${today}</strong></div>
-    </div>
-  </div>
-
-  ${printContent}
-
-  <div class="print-footer">
-    <span>نظام متابعة إيصالات الـ 1% الضريبية</span>
-    <span>${companyName} — ${today}</span>
-  </div>
-</body>
-</html>`;
-
-    // استخدام Blob بدل document.write لضمان التحميل الكامل
-    const blob = new Blob([html], { type: 'text/html;charset=utf-8' });
-    const url  = URL.createObjectURL(blob);
-    const win  = window.open(url, '_blank');
-
-    if (!win) {
-        showNotification('يرجى السماح بفتح النوافذ المنبثقة في المتصفح', 'error');
-        URL.revokeObjectURL(url);
-        return;
+    function buildTable(rows) {
+        if (!rows.length) return '';
+        const trs = rows.map(inv => {
+            const status = getInvoiceStatus(inv);
+            const days   = getDaysRemaining(inv.date);
+            const daysStr = status === STATUS.RECEIVED ? '✅'
+                : days <= 0 ? `متأخر ${Math.abs(days)} يوم`
+                : `${days} يوم`;
+            const badgeClass = status === STATUS.RECEIVED ? 'received'
+                : status === STATUS.OVERDUE ? 'overdue' : 'pending';
+            return `<tr>
+                <td>${inv.number}</td>
+                <td>${formatDate(inv.date)}</td>
+                <td>${formatCurrency(inv.amount)}</td>
+                <td><strong>${formatCurrency(inv.tax_amount)}</strong></td>
+                <td>${daysStr}</td>
+                <td><span class="ph-badge ${badgeClass}">${getStatusText(status)}</span></td>
+            </tr>`;
+        }).join('');
+        const totAmount = rows.reduce((s, i) => s + i.amount, 0);
+        const totTax    = rows.reduce((s, i) => s + i.tax_amount, 0);
+        return `<table class="ph-table">
+            <thead><tr>
+                <th>رقم الفاتورة</th><th>التاريخ</th>
+                <th>المبلغ</th><th>قيمة 1%</th>
+                <th>الأيام</th><th>الحالة</th>
+            </tr></thead>
+            <tbody>
+                ${trs}
+                <tr class="total-row">
+                    <td colspan="2">الإجمالي</td>
+                    <td>${formatCurrency(totAmount)}</td>
+                    <td><strong>${formatCurrency(totTax)}</strong></td>
+                    <td colspan="2"></td>
+                </tr>
+            </tbody>
+        </table>`;
     }
 
-    win.addEventListener('load', () => {
-        setTimeout(() => {
-            win.print();
-            URL.revokeObjectURL(url);
-        }, 400);
-    });
+    let sectionsHtml = '';
+    if (overdue.length)  sectionsHtml += `<div class="ph-section"><div class="ph-section-title">⚠️ فواتير متأخرة (${overdue.length})</div>${buildTable(overdue)}</div>`;
+    if (pending.length)  sectionsHtml += `<div class="ph-section"><div class="ph-section-title">⏳ فواتير معلقة (${pending.length})</div>${buildTable(pending)}</div>`;
+    if (received.length) sectionsHtml += `<div class="ph-section"><div class="ph-section-title">✅ فواتير مستلمة (${received.length})</div>${buildTable(received)}</div>`;
+
+    document.getElementById('printContainer').innerHTML = `
+        <div class="ph-header">
+            <div>
+                <div class="ph-title">📋 تقرير: ${companyName}</div>
+                <div class="ph-subtitle">نظام متابعة إيصالات الـ 1% الضريبية</div>
+            </div>
+            <div class="ph-date">تاريخ الطباعة<br><strong>${today}</strong></div>
+        </div>
+        <div class="ph-stats">
+            <div class="ph-stat">
+                <span class="ph-stat-lbl">إجمالي الفواتير</span>
+                <span class="ph-stat-val">${stats.total}</span>
+            </div>
+            <div class="ph-stat green">
+                <span class="ph-stat-lbl">✅ مستلمة</span>
+                <span class="ph-stat-val">${stats.received}</span>
+            </div>
+            <div class="ph-stat yellow">
+                <span class="ph-stat-lbl">⏳ معلقة</span>
+                <span class="ph-stat-val">${stats.pending}</span>
+            </div>
+            <div class="ph-stat red">
+                <span class="ph-stat-lbl">⚠️ متأخرة</span>
+                <span class="ph-stat-val">${stats.overdue}</span>
+            </div>
+            <div class="ph-stat">
+                <span class="ph-stat-lbl">إجمالي 1%</span>
+                <span class="ph-stat-val">${formatCurrency(stats.totalTax)}</span>
+            </div>
+            <div class="ph-stat red">
+                <span class="ph-stat-lbl">1% معلقة</span>
+                <span class="ph-stat-val">${formatCurrency(stats.pendingTax)}</span>
+            </div>
+        </div>
+        ${sectionsHtml}
+        <div class="ph-footer">
+            <span>نظام متابعة إيصالات الـ 1% الضريبية</span>
+            <span>${companyName} — ${today}</span>
+        </div>
+    `;
+
+    window.print();
+
+    // امسح بعد الطباعة
+    setTimeout(() => {
+        document.getElementById('printContainer').innerHTML = '';
+    }, 1000);
 }
 
 // ==============================================
