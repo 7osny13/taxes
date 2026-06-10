@@ -615,40 +615,208 @@ function buildCompanyInvoiceTable(invoices) {
 
 function closeCompanyReportModal() {
     document.getElementById('companyReportModal').classList.remove('active');
+    // امسح المحتوى عشان ما يأثرش على الطباعة
+    document.getElementById('companyReportBody').innerHTML = '';
 }
 
+// إغلاق المودال بالضغط على الخلفية
+document.addEventListener('click', function(e) {
+    const modal = document.getElementById('companyReportModal');
+    if (e.target === modal) {
+        closeCompanyReportModal();
+    }
+});
+
 function printCompanyReport(companyName) {
-    const body    = document.getElementById('companyReportBody').innerHTML;
-    const win     = window.open('', '_blank');
-    win.document.write(`
-        <html dir="rtl"><head>
-        <meta charset="UTF-8">
-        <title>تقرير ${companyName}</title>
-        <style>
-            body { font-family: 'Segoe UI', sans-serif; direction: rtl; padding: 20px; }
-            h2   { color: #667eea; border-bottom: 2px solid #667eea; padding-bottom: 8px; }
-            h4   { color: #333; margin-top: 20px; }
-            table { width: 100%; border-collapse: collapse; margin-top: 10px; }
-            th { background: #667eea; color: white; padding: 10px; text-align: right; }
-            td { padding: 8px 10px; border-bottom: 1px solid #eee; }
-            .company-report-header { display: flex; gap: 10px; flex-wrap: wrap; margin-bottom: 20px; }
-            .cr-stat { background: #667eea; color: white; padding: 12px; border-radius: 8px; text-align: center; min-width: 100px; }
-            .cr-stat.green  { background: #2ed573; }
-            .cr-stat.yellow { background: #ffa801; }
-            .cr-stat.red    { background: #ff4757; }
-            .cr-stat-label  { display: block; font-size: 0.75rem; }
-            .cr-stat-value  { display: block; font-size: 1.4rem; font-weight: bold; }
-            .status-badge   { padding: 3px 8px; border-radius: 10px; font-size: 0.8rem; }
-            .cr-print-btn, button { display: none; }
-        </style>
-        </head><body>
-        <h2>📋 تقرير: ${companyName}</h2>
-        <p>تاريخ الطباعة: ${new Date().toLocaleDateString('ar-EG')}</p>
-        ${body}
-        </body></html>`);
-    win.document.close();
-    win.focus();
-    setTimeout(() => { win.print(); win.close(); }, 500);
+    const reportBody = document.getElementById('companyReportBody');
+    const clone = reportBody.cloneNode(true);
+    const printBtn = clone.querySelector('.cr-print-btn');
+    if (printBtn) printBtn.remove();
+    const printContent = clone.innerHTML;
+
+    const today = new Date().toLocaleDateString('ar-EG', {
+        weekday: 'long', year: 'numeric', month: 'long', day: 'numeric'
+    });
+
+    const html = `<!DOCTYPE html>
+<html dir="rtl" lang="ar">
+<head>
+<meta charset="UTF-8">
+<title>تقرير ${companyName}</title>
+<style>
+  @page { size: A4; margin: 15mm 12mm; }
+  * { box-sizing: border-box; margin: 0; padding: 0; }
+  body {
+    font-family: 'Segoe UI', Tahoma, Arial, sans-serif;
+    direction: rtl;
+    color: #222;
+    font-size: 11pt;
+    background: white;
+  }
+
+  /* رأس الصفحة */
+  .print-header {
+    display: flex;
+    justify-content: space-between;
+    align-items: flex-end;
+    border-bottom: 3px solid #667eea;
+    padding-bottom: 10px;
+    margin-bottom: 15px;
+  }
+  .print-header-right h1 {
+    font-size: 16pt;
+    color: #667eea;
+    margin-bottom: 3px;
+  }
+  .print-header-right p {
+    font-size: 9pt;
+    color: #666;
+  }
+  .print-header-left {
+    text-align: left;
+    font-size: 9pt;
+    color: #666;
+  }
+
+  /* بطاقات الإحصائيات */
+  .company-report-header {
+    display: flex;
+    gap: 8px;
+    margin-bottom: 18px;
+    flex-wrap: wrap;
+  }
+  .cr-stat {
+    flex: 1;
+    min-width: 90px;
+    background: #667eea;
+    color: white;
+    padding: 10px 8px;
+    border-radius: 8px;
+    text-align: center;
+    -webkit-print-color-adjust: exact;
+    print-color-adjust: exact;
+  }
+  .cr-stat.green  { background: #2ed573; }
+  .cr-stat.yellow { background: #ffa801; }
+  .cr-stat.red    { background: #ff4757; }
+  .cr-stat-label  { display: block; font-size: 8pt; margin-bottom: 3px; opacity: 0.95; }
+  .cr-stat-value  { display: block; font-size: 14pt; font-weight: bold; }
+
+  /* أقسام الفواتير */
+  .cr-section { margin-bottom: 20px; page-break-inside: avoid; }
+  .cr-section h4 {
+    font-size: 11pt;
+    font-weight: bold;
+    padding: 6px 10px;
+    border-radius: 5px 5px 0 0;
+    margin-bottom: 0;
+    background: #f0f0f0;
+    border-right: 4px solid #667eea;
+    color: #333;
+    -webkit-print-color-adjust: exact;
+    print-color-adjust: exact;
+  }
+
+  /* جداول الفواتير */
+  table {
+    width: 100%;
+    border-collapse: collapse;
+    font-size: 9.5pt;
+  }
+  thead tr {
+    background: #667eea;
+    color: white;
+    -webkit-print-color-adjust: exact;
+    print-color-adjust: exact;
+  }
+  th {
+    padding: 7px 8px;
+    text-align: right;
+    font-weight: 600;
+  }
+  td {
+    padding: 6px 8px;
+    border-bottom: 1px solid #eee;
+  }
+  tbody tr:nth-child(even) {
+    background: #f9f9f9;
+    -webkit-print-color-adjust: exact;
+    print-color-adjust: exact;
+  }
+  tbody tr:last-child td {
+    font-weight: bold;
+    background: #efefef;
+    border-top: 2px solid #ccc;
+    -webkit-print-color-adjust: exact;
+    print-color-adjust: exact;
+  }
+
+  /* بادجات الحالة */
+  .status-badge {
+    padding: 2px 7px;
+    border-radius: 8px;
+    font-size: 8.5pt;
+    font-weight: 600;
+    -webkit-print-color-adjust: exact;
+    print-color-adjust: exact;
+  }
+  .status-received { background: #d4edda; color: #155724; }
+  .status-pending  { background: #fff3cd; color: #856404; }
+  .status-overdue  { background: #f8d7da; color: #721c24; }
+
+  /* تذييل الصفحة */
+  .print-footer {
+    margin-top: 20px;
+    border-top: 1px solid #ddd;
+    padding-top: 8px;
+    font-size: 8.5pt;
+    color: #888;
+    display: flex;
+    justify-content: space-between;
+  }
+
+  /* إخفاء زر الطباعة */
+  .cr-print-btn, button { display: none !important; }
+</style>
+</head>
+<body>
+  <div class="print-header">
+    <div class="print-header-right">
+      <h1>📋 تقرير الشركة: ${companyName}</h1>
+      <p>نظام متابعة إيصالات الـ 1% الضريبية</p>
+    </div>
+    <div class="print-header-left">
+      <div>تاريخ الطباعة</div>
+      <div><strong>${today}</strong></div>
+    </div>
+  </div>
+
+  ${printContent}
+
+  <div class="print-footer">
+    <span>نظام متابعة إيصالات الـ 1% الضريبية</span>
+    <span>${companyName} — ${today}</span>
+  </div>
+</body>
+</html>`;
+
+    // استخدام Blob بدل document.write لضمان التحميل الكامل
+    const blob = new Blob([html], { type: 'text/html;charset=utf-8' });
+    const url  = URL.createObjectURL(blob);
+    const win  = window.open(url, '_blank');
+
+    if (!win) {
+        showNotification('يرجى السماح بفتح النوافذ المنبثقة في المتصفح', 'error');
+        URL.revokeObjectURL(url);
+        return;
+    }
+
+    win.addEventListener('load', () => {
+        setTimeout(() => {
+            win.print();
+            URL.revokeObjectURL(url);
+        }, 400);
+    });
 }
 
 // ==============================================
