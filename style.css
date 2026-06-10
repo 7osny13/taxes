@@ -654,43 +654,137 @@ tbody tr:hover {
     }
 }
 
-/* Print Styles */
+/* Print Container - مخفي في الشاشة */
+.print-container {
+    display: none;
+}
+
+/* ============================
+   أنماط الطباعة
+   ============================ */
 @media print {
-    body {
-        background: white;
-        padding: 0;
-    }
-
-    .container {
-        box-shadow: none;
-    }
-
-    .header {
-        background: white;
-        color: #333;
-        border-bottom: 3px solid #667eea;
-    }
-
-    .tabs,
-    .filters,
-    .section-header button,
-    .action-buttons,
-    .modal {
+    /* إخفاء كل شيء */
+    body > * {
         display: none !important;
     }
 
-    .tab-content {
+    /* إظهار فقط محتوى الطباعة */
+    #printContainer {
         display: block !important;
+        font-family: 'Segoe UI', Tahoma, Arial, sans-serif;
+        direction: rtl;
+        color: #222;
+        font-size: 11pt;
+        background: white;
     }
 
-    table {
-        page-break-inside: auto;
+    /* رأس الصفحة */
+    .ph-header {
+        display: flex;
+        justify-content: space-between;
+        align-items: flex-end;
+        border-bottom: 3px solid #667eea;
+        padding-bottom: 10px;
+        margin-bottom: 15px;
+    }
+    .ph-title {
+        font-size: 16pt;
+        color: #667eea;
+        font-weight: bold;
+        margin-bottom: 3px;
+    }
+    .ph-subtitle { font-size: 9pt; color: #666; }
+    .ph-date     { font-size: 9pt; color: #666; text-align: left; }
+
+    /* بطاقات الإحصائيات */
+    .ph-stats {
+        display: flex;
+        gap: 8px;
+        margin-bottom: 18px;
+        flex-wrap: wrap;
+    }
+    .ph-stat {
+        flex: 1;
+        min-width: 90px;
+        padding: 10px 8px;
+        border-radius: 8px;
+        text-align: center;
+        -webkit-print-color-adjust: exact;
+        print-color-adjust: exact;
+        background: #667eea;
+        color: white;
+    }
+    .ph-stat.green  { background: #2ed573; }
+    .ph-stat.yellow { background: #ffa801; }
+    .ph-stat.red    { background: #ff4757; }
+    .ph-stat-lbl { display: block; font-size: 8pt; margin-bottom: 3px; }
+    .ph-stat-val { display: block; font-size: 14pt; font-weight: bold; }
+
+    /* أقسام الفواتير */
+    .ph-section { margin-bottom: 18px; page-break-inside: avoid; }
+    .ph-section-title {
+        font-size: 11pt;
+        font-weight: bold;
+        padding: 6px 10px;
+        border-radius: 4px 4px 0 0;
+        background: #f0f0f0;
+        border-right: 4px solid #667eea;
+        color: #333;
+        -webkit-print-color-adjust: exact;
+        print-color-adjust: exact;
     }
 
-    tr {
-        page-break-inside: avoid;
-        page-break-after: auto;
+    /* جداول */
+    .ph-table {
+        width: 100%;
+        border-collapse: collapse;
+        font-size: 9.5pt;
     }
+    .ph-table thead tr {
+        background: #667eea;
+        color: white;
+        -webkit-print-color-adjust: exact;
+        print-color-adjust: exact;
+    }
+    .ph-table th { padding: 7px 8px; text-align: right; font-weight: 600; }
+    .ph-table td { padding: 6px 8px; border-bottom: 1px solid #eee; }
+    .ph-table tbody tr:nth-child(even) {
+        background: #f9f9f9;
+        -webkit-print-color-adjust: exact;
+        print-color-adjust: exact;
+    }
+    .ph-table .total-row td {
+        font-weight: bold;
+        background: #efefef !important;
+        border-top: 2px solid #ccc;
+        -webkit-print-color-adjust: exact;
+        print-color-adjust: exact;
+    }
+
+    /* بادجات الحالة */
+    .ph-badge {
+        padding: 2px 7px;
+        border-radius: 8px;
+        font-size: 8.5pt;
+        font-weight: 600;
+        -webkit-print-color-adjust: exact;
+        print-color-adjust: exact;
+    }
+    .ph-badge.received { background: #d4edda; color: #155724; }
+    .ph-badge.pending  { background: #fff3cd; color: #856404; }
+    .ph-badge.overdue  { background: #f8d7da; color: #721c24; }
+
+    /* تذييل */
+    .ph-footer {
+        margin-top: 20px;
+        border-top: 1px solid #ddd;
+        padding-top: 8px;
+        font-size: 8.5pt;
+        color: #888;
+        display: flex;
+        justify-content: space-between;
+    }
+}
 }
 
 /* ============================
